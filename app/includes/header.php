@@ -1,0 +1,493 @@
+<?php
+// ตรวจสอบว่า session ยังไม่เริ่มทำงาน
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// คำนวณเส้นทางสัมพัทธ์สำหรับลิงก์
+$base_path = '';
+$current_dir = dirname($_SERVER['PHP_SELF']);
+if (strpos($current_dir, '/includes') !== false || strpos($current_dir, '/students') !== false) {
+    $base_path = '..';
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการข้อมูลนักเรียน | SMS</title>
+    <!-- เพิ่ม Favicon -->
+    <link rel="icon" href="<?php echo $base_path; ?>/assets/favicon.ico" type="image/x-icon">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts - Sarabun สำหรับภาษาไทย -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3f6ad8;
+            --secondary-color: #6c757d;
+            --success-color: #3ac47d;
+            --danger-color: #d92550;
+            --warning-color: #f7b924;
+            --info-color: #16aaff;
+            --light-color: #eee;
+            --dark-color: #343a40;
+            --sidebar-width: 270px;
+            --header-height: 60px;
+            --card-shadow: 0 0.46875rem 2.1875rem rgba(4, 9, 20, 0.03), 
+                           0 0.9375rem 1.40625rem rgba(4, 9, 20, 0.03), 
+                           0 0.25rem 0.53125rem rgba(4, 9, 20, 0.05), 
+                           0 0.125rem 0.1875rem rgba(4, 9, 20, 0.03);
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f7fa;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: linear-gradient(180deg, #3f6ad8 0%, #2952b3 100%);
+            color: white;
+            transition: all 0.3s;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+        }
+
+        .sidebar.collapsed {
+            margin-left: calc(-1 * var(--sidebar-width) + 60px);
+        }
+
+        .logo-area {
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: var(--header-height);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-area h4 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .logo-area i {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+
+        .sidebar .nav {
+            padding: 1rem 0;
+            height: calc(100vh - var(--header-height));
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.85);
+            padding: 0.8rem 1.5rem;
+            margin: 0.2rem 0.8rem;
+            border-radius: 0.25rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .sidebar .nav-link:hover {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .sidebar .nav-link.active {
+            color: #fff;
+            background-color: rgba(255, 255, 255, 0.2);
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link i {
+            min-width: 1.75rem;
+            text-align: center;
+            font-size: 1rem;
+            margin-right: 0.75rem;
+        }
+
+        .sidebar .nav-item-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .spacer {
+            flex-grow: 1;
+        }
+
+        /* Main Content */
+        .main-wrapper {
+            flex-grow: 1;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s;
+            width: calc(100% - var(--sidebar-width));
+        }
+
+        .main-wrapper.expanded {
+            margin-left: 60px;
+            width: calc(100% - 60px);
+        }
+
+        /* Top Navbar */
+        .top-navbar {
+            background-color: #fff;
+            height: var(--header-height);
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(33, 40, 50, 0.15);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+        }
+
+        .menu-toggle:hover {
+            color: var(--primary-color);
+        }
+
+        .breadcrumb-wrapper {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .breadcrumb {
+            margin-bottom: 0;
+            background: transparent;
+            padding: 0;
+        }
+
+        .breadcrumb-item a {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        .breadcrumb-item.active {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-dropdown-toggle {
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            color: var(--dark-color);
+            font-weight: 500;
+            text-decoration: none;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .user-dropdown-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .user-dropdown-toggle img {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            object-fit: cover;
+            border: 2px solid var(--light-color);
+        }
+
+        .dropdown-toggle::after {
+            margin-left: 0.5rem;
+        }
+
+        .dropdown-menu {
+            box-shadow: var(--card-shadow);
+            border: none;
+            margin-top: 0.5rem;
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .dropdown-item i {
+            margin-right: 0.5rem;
+            width: 1.2rem;
+            text-align: center;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            padding: 1.5rem;
+        }
+
+        /* Cards and Components */
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(45deg, #3f6ad8 0%, #729df3 100%);
+        }
+
+        .bg-gradient-success {
+            background: linear-gradient(45deg, #3ac47d 0%, #57e692 100%);
+        }
+
+        .bg-gradient-warning {
+            background: linear-gradient(45deg, #f7b924 0%, #f9cf58 100%);
+        }
+
+        .bg-gradient-danger {
+            background: linear-gradient(45deg, #d92550 0%, #f45a73 100%);
+        }
+
+        .bg-gradient-info {
+            background: linear-gradient(45deg, #16aaff 0%, #63c5fa 100%);
+        }
+
+        .icon-wrapper {
+            width: 54px;
+            height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .icon-wrapper i {
+            font-size: 1.5rem;
+        }
+
+        /* Form Controls */
+        .form-label.required:after {
+            content: " *";
+            color: var(--danger-color);
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        /* เพิ่มเติม Animation และ Utilities */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .section-heading {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .section-heading i {
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+
+        /* เพิ่มเติมสำหรับ Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                margin-left: calc(-1 * var(--sidebar-width));
+            }
+            
+            .sidebar.mobile-show {
+                margin-left: 0;
+            }
+            
+            .main-wrapper {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .card-deck {
+                display: block;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">        <div class="logo-area">
+            <h4><i class="fas fa-graduation-cap"></i> <span class="nav-item-title">SMS</span></h4>
+        </div>
+        <div class="nav flex-column">
+            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>"
+                href="<?php echo $base_path; ?>/dashboard.php">
+                <i class="fas fa-tachometer-alt"></i>
+                <span class="nav-item-title">หน้าหลัก</span>
+            </a>
+            <a class="nav-link <?php echo (strpos($_SERVER['PHP_SELF'], '/students/') !== false) ? 'active' : ''; ?>"
+                href="<?php echo $base_path; ?>/students/list.php">
+                <i class="fas fa-user-graduate"></i>
+                <span class="nav-item-title">จัดการนักเรียน</span>
+            </a>
+            <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'active' : ''; ?>"
+                href="<?php echo $base_path; ?>/settings.php">
+                <i class="fas fa-cog"></i>
+                <span class="nav-item-title">ตั้งค่าระบบ</span>
+            </a>
+            <div class="spacer"></div>
+            <a class="nav-link text-danger" href="<?php echo $base_path; ?>/logout.php">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="nav-item-title">ออกจากระบบ</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper" id="main-wrapper">
+        <!-- Top Navbar -->
+        <header class="top-navbar">
+            <button class="menu-toggle" id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="breadcrumb-wrapper">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <?php
+                        // สร้าง breadcrumb โดยอัตโนมัติ
+                        $uri = $_SERVER['REQUEST_URI'];
+                        $segments = explode('/', trim($uri, '/'));
+                        $breadcrumb_path = '';
+                        
+                        echo '<li class="breadcrumb-item"><a href="' . $base_path . '/dashboard.php"><i class="fas fa-home"></i></a></li>';
+                        
+                        $last_segment = end($segments);
+                        if ($last_segment == 'dashboard.php') {
+                            echo '<li class="breadcrumb-item active">หน้าหลัก</li>';
+                        } else if (strpos($last_segment, 'list.php') !== false && in_array('students', $segments)) {
+                            echo '<li class="breadcrumb-item active">จัดการนักเรียน</li>';
+                        } else if (strpos($last_segment, 'add.php') !== false && in_array('students', $segments)) {
+                            echo '<li class="breadcrumb-item"><a href="' . $base_path . '/students/list.php">จัดการนักเรียน</a></li>';
+                            echo '<li class="breadcrumb-item active">เพิ่มข้อมูลนักเรียน</li>';
+                        } else if (strpos($last_segment, 'edit.php') !== false && in_array('students', $segments)) {
+                            echo '<li class="breadcrumb-item"><a href="' . $base_path . '/students/list.php">จัดการนักเรียน</a></li>';
+                            echo '<li class="breadcrumb-item active">แก้ไขข้อมูลนักเรียน</li>';
+                        } else if (strpos($last_segment, 'view.php') !== false && in_array('students', $segments)) {
+                            echo '<li class="breadcrumb-item"><a href="' . $base_path . '/students/list.php">จัดการนักเรียน</a></li>';
+                            echo '<li class="breadcrumb-item active">ดูข้อมูลนักเรียน</li>';
+                        } else if ($last_segment == 'reports.php') {
+                            echo '<li class="breadcrumb-item active">รายงาน</li>';
+                        } else if ($last_segment == 'settings.php') {
+                            echo '<li class="breadcrumb-item active">ตั้งค่าระบบ</li>';
+                        }
+                        ?>
+                    </ol>
+                </nav>
+            </div>
+            <div class="user-dropdown dropdown">
+                <button class="user-dropdown-toggle dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <img src="https://www.gravatar.com/avatar/<?php echo md5(strtolower(trim($_SESSION['email'] ?? 'default@example.com'))); ?>?s=200&d=mp" alt="User Profile">
+                    <span class="nav-item-title"><?php echo isset($_SESSION['username']) ? $_SESSION['username'] : 'Guest'; ?></span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="<?php echo $base_path; ?>/profile.php"><i class="fas fa-user-circle"></i> โปรไฟล์</a></li>
+                    <li><a class="dropdown-item" href="<?php echo $base_path; ?>/settings.php"><i class="fas fa-cog"></i> ตั้งค่า</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="<?php echo $base_path; ?>/logout.php"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</a></li>
+                </ul>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content fade-in">
+            <!-- การแสดงข้อความแจ้งเตือน -->
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i><?php echo $_SESSION['success']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i><?php echo $_SESSION['error']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['error']); ?>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['warning'])): ?>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i><?php echo $_SESSION['warning']; ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <?php unset($_SESSION['warning']); ?>
+            <?php endif; ?>

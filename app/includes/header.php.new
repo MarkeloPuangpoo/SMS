@@ -1,0 +1,16 @@
+<?php
+// ตรวจสอบว่า session ยังไม่เริ่มทำงาน
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// คำนวณเส้นทางสัมพัทธ์สำหรับลิงก์
+$base_path = '';
+$current_dir = dirname($_SERVER['PHP_SELF']);
+if (strpos($current_dir, '/includes') !== false || strpos($current_dir, '/students') !== false) {
+    $base_path = '..';
+}
+?>
+<!DOCTYPE html>
+<html lang="th">
+<!-- ...existing code... -->
